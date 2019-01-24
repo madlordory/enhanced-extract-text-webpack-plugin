@@ -29,8 +29,6 @@ npm install --save-dev extract-text-webpack-plugin@1.0.1
 
 <h2 align="center">Usage</h2>
 
-> :warning: Since webpack v4 the `extract-text-webpack-plugin` should not be used for css. Use [mini-css-extract-plugin](https://github.com/webpack-contrib/mini-css-extract-plugin) instead.
-
 > :warning: For webpack v1, see [the README in the webpack-1 branch](https://github.com/webpack/extract-text-webpack-plugin/blob/webpack-1/README.md).
 
 ```js
@@ -74,7 +72,7 @@ new ExtractTextPlugin(options: filename | object)
 |:--:|:--:|:----------|
 |**`id`**|`{String}`|Unique ident for this plugin instance. (For advanced usage only, by default automatically generated)|
 |**`filename`**|`{String\|Function}`|Name of the result file. May contain `[name]`, `[id]` and `[contenthash]`|
-|**`allChunks`**|`{Boolean}`|Extract from all additional chunks too (by default it extracts only from the initial chunk(s))<br />When using `CommonsChunkPlugin` and there are extracted chunks (from `ExtractTextPlugin.extract`) in the commons chunk, `allChunks` **must** be set to `true`|
+|**`allChunks`**|`{Boolean}`|Extract from all additional chunks too (by default it extracts only from the initial chunk(s))<br />When using `optimization.splitChunks` and there are extracted chunks (from `ExtractTextPlugin.extract`) in the commons chunk, `allChunks` **must** be set to `true`|
 |**`disable`**|`{Boolean}`|Disables the plugin|
 |**`ignoreOrder`**|`{Boolean}`|Disables order check (useful for CSS Modules!), `false` by default|
 
