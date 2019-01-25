@@ -79,7 +79,8 @@
     "standard-version": "^4.3.0",
     "style-loader": "^0.19.1",
     "webpack": "^4.1.1",
-    "webpack-defaults": "^2.1.4"
+    "webpack-defaults": "^2.1.4",
+    "eslint-config-webpack": "^1.2.5"
   },
   "jest": {
     "testEnvironment": "node"

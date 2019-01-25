@@ -35,7 +35,7 @@ class ExtractTextPlugin {
       validateOptions(
         path.resolve(__dirname, './plugin.json'),
         options,
-        'Extract Text Plugin'
+        'Extract Text Plugin',
       );
     }
     this.filename = options.filename;
@@ -93,7 +93,7 @@ class ExtractTextPlugin {
     for (const chunkModule of chunk.modulesIterable) {
       let moduleSource = chunkModule.source(
         compilation.dependencyTemplates,
-        compilation.runtimeTemplate
+        compilation.runtimeTemplate,
       );
 
       // This module was concatenated by the ModuleConcatenationPlugin; because the pitching loader
@@ -128,8 +128,8 @@ class ExtractTextPlugin {
         source.add(
           ExtractTextPlugin.applyAdditionalInformation(
             moduleSource,
-            chunkModule.additionalInformation
-          )
+            chunkModule.additionalInformation,
+          ),
         );
       }
     }
@@ -149,7 +149,7 @@ class ExtractTextPlugin {
       validateOptions(
         path.resolve(__dirname, './loader.json'),
         options,
-        'Extract Text Plugin (Loader)'
+        'Extract Text Plugin (Loader)',
       );
     }
 
@@ -190,8 +190,8 @@ class ExtractTextPlugin {
             if (!Array.isArray(content) && content != null) {
               throw new Error(
                 `Exported value was not extracted as an array: ${JSON.stringify(
-                  content
-                )}`
+                  content,
+                )}`,
               );
             }
 
@@ -202,13 +202,15 @@ class ExtractTextPlugin {
 
             return options.allChunks || module[`${NS}/extract`]; // eslint-disable-line no-path-concat
           };
-        }
+        },
       );
 
+      // 创建 extractedChunks ：css chunk
       let extractedChunks;
       compilation.hooks.optimizeTree.tapAsync(
         plugin,
         (chunks, modules, callback) => {
+          // 根据 chunk 复制 新 CSS chunk
           extractedChunks = chunks.map(() => new Chunk());
 
           chunks.forEach((chunk, i) => {
@@ -223,6 +225,7 @@ class ExtractTextPlugin {
             }
           });
 
+          // 轮询每个 chunk
           async.forEach(
             chunks,
             (chunk, chunkCallback) => {
@@ -232,15 +235,17 @@ class ExtractTextPlugin {
                 options.allChunks || isInitialOrHasNoParents(chunk)
               );
 
+              // 轮询该 chunk 的所有 module
               async.forEach(
                 Array.from(chunk.modulesIterable).sort(
                   // NOTE: .index should be .index2 once ESM support is added
-                  (a, b) => a.index - b.index
+                  (a, b) => a.index - b.index,
                 ),
                 (module, moduleCallback) => {
                   // eslint-disable-line no-shadow
                   let meta = module[NS];
 
+                  // 如果是 css 的 module 则在 extractedChunk 中追加 ExtractedModule
                   if (meta && (!meta.options.id || meta.options.id === id)) {
                     const wasExtracted = Array.isArray(meta.content);
 
@@ -264,7 +269,7 @@ class ExtractTextPlugin {
                           meta.content != null
                         ) {
                           err = new Error(
-                            `${module.identifier()} doesn't export content`
+                            `${module.identifier()} doesn't export content`,
                           );
                           compilation.errors.push(err);
 
@@ -276,7 +281,7 @@ class ExtractTextPlugin {
                             module.identifier(),
                             meta.content,
                             module,
-                            extractedChunk
+                            extractedChunk,
                           );
                         }
 
@@ -287,7 +292,7 @@ class ExtractTextPlugin {
                         module.identifier(),
                         meta.content,
                         module,
-                        extractedChunk
+                        extractedChunk,
                       );
                     }
                   }
@@ -300,7 +305,7 @@ class ExtractTextPlugin {
                   }
 
                   chunkCallback();
-                }
+                },
               );
             },
             (err) => {
@@ -308,12 +313,14 @@ class ExtractTextPlugin {
                 return callback(err);
               }
 
+              // 所有模块轮询完毕后遍历 extractedChunks，将 extractedChunk 中的异步 chunk 的所有 module 归并到 extractedChunk 中
               extractedChunks.forEach((extractedChunk) => {
                 if (isInitialOrHasNoParents(extractedChunk)) {
                   this.mergeNonInitialChunks(extractedChunk);
                 }
               });
 
+              // 刨除异步 extractedChunk 中的所有 CSS module，感觉这步走不到
               extractedChunks.forEach((extractedChunk) => {
                 if (!isInitialOrHasNoParents(extractedChunk)) {
                   for (const chunkModule of extractedChunk.modulesIterable) {
@@ -324,21 +331,24 @@ class ExtractTextPlugin {
 
               compilation.hooks.optimizeExtractedChunks.call(extractedChunks);
               callback();
-            }
+            },
           );
-        }
+        },
       );
 
+      // 生成文件
       compilation.hooks.additionalAssets.tapAsync(plugin, (assetCb) => {
+        // 遍历所有 css chunk
         extractedChunks.forEach((extractedChunk) => {
           if (extractedChunk.getNumberOfModules()) {
+            // css 模块排序
             extractedChunk.sortModules((a, b) => {
               if (!options.ignoreOrder && isInvalidOrder(a, b)) {
                 compilation.errors.push(
-                  new OrderUndefinedError(a.getOriginalModule())
+                  new OrderUndefinedError(a.getOriginalModule()),
                 );
                 compilation.errors.push(
-                  new OrderUndefinedError(b.getOriginalModule())
+                  new OrderUndefinedError(b.getOriginalModule()),
                 );
               }
 
@@ -346,16 +356,17 @@ class ExtractTextPlugin {
             });
 
             const chunk = extractedChunk.originalChunk;
+            // 根据 css chunk 生成 css 文本
             const source = ExtractTextPlugin.renderExtractedChunk(
               compilation,
-              extractedChunk
+              extractedChunk,
             );
 
             if (!source.size()) {
               return;
             }
 
-            const getPath = (format) =>
+            const getPath = format =>
               compilation
                 .getPath(format, {
                   chunk,
@@ -363,21 +374,22 @@ class ExtractTextPlugin {
                 .replace(
                   /\[(?:(\w+):)?contenthash(?::([a-z]+\d*))?(?::(\d+))?\]/gi,
                   // eslint-disable-next-line func-names
-                  function() {
+                  function () {
                     return loaderUtils.getHashDigest(
                       source.source(),
                       arguments[1],
                       arguments[2],
-                      parseInt(arguments[3], 10)
+                      parseInt(arguments[3], 10),
                     );
-                  }
+                  },
                 );
 
-            const file = isFunction(filename)
-              ? filename(getPath)
-              : getPath(filename);
+            // 生成 css 文件路径名
+            const file = isFunction(filename) ? filename(getPath) : getPath(filename);
 
+            // 注册资源文件
             compilation.assets[file] = source;
+            // 资源文件归添加到 chunk 中
             chunk.files.push(file);
           }
         }, this);
@@ -389,7 +401,7 @@ class ExtractTextPlugin {
 }
 
 ExtractTextPlugin.extract = ExtractTextPlugin.prototype.extract.bind(
-  ExtractTextPlugin
+  ExtractTextPlugin,
 );
 
 export default ExtractTextPlugin;
