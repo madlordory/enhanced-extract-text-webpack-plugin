@@ -1,6 +1,6 @@
 {
   "name": "enhanced-extract-text-webpack-plugin",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Extract text from bundle into a file.",
   "license": "MIT",
   "repository": "webpack-contrib/enhanced-extract-text-webpack-plugin",
@@ -17,9 +17,10 @@
     "clean": "del-cli dist",
     "commitlint": "commitlint",
     "commitmsg": "commitlint -e $GIT_PARAMS",
-    "lint": "eslint --cache src test",
+    "lint": "eslint --cache src",
     "ci:lint:commits": "commitlint --from=${CIRCLE_BRANCH} --to=${CIRCLE_SHA1}",
     "lint-staged": "lint-staged",
+    "prettier-all": "prettier --write './src/*.{js,ts,tsx,jsx,md,less,json,css}'",
     "prebuild": "npm run clean",
     "prepublish": "npm run build",
     "release": "standard-version",
@@ -64,9 +65,15 @@
     "css-loader": "^0.28.9",
     "del": "^3.0.0",
     "del-cli": "^1.1.0",
-    "eslint": "^4.17.0",
-    "eslint-plugin-import": "^2.8.0",
+    "babel-eslint": "^10.0.1",
     "eslint-plugin-prettier": "^2.6.0",
+    "eslint": "^4.19.1",
+    "eslint-config-airbnb": "^17.1.0",
+    "eslint-config-prettier": "^3.6.0",
+    "eslint-loader": "^2.0.0",
+    "eslint-plugin-import": "^2.10.0",
+    "eslint-plugin-jsx-a11y": "^6.1.1",
+    "eslint-plugin-react": "^7.12.3",
     "file-loader": "^1.1.6",
     "husky": "^0.14.3",
     "jest": "^22.3.0",
@@ -88,6 +95,7 @@
   "pre-commit": "lint-staged",
   "lint-staged": {
     "*.js": [
+      "prettier --write",
       "eslint --fix",
       "git add"
     ]

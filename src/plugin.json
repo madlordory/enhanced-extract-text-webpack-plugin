@@ -11,13 +11,15 @@
       "type": "boolean"
     },
     "fallback": {
-      "description": "A loader that webpack can fall back to if the original one fails.",
+      "description":
+        "A loader that webpack can fall back to if the original one fails.",
       "modes": {
         "type": ["string", "object", "array"]
       }
     },
     "filename": {
-      "description": "The filename and path that ExtractTextPlugin will extract to",
+      "description":
+        "The filename and path that ExtractTextPlugin will extract to",
       "modes": {
         "type": ["string", "function"]
       }
@@ -27,7 +29,8 @@
       "type": "boolean"
     },
     "loader": {
-      "description": "The loader that ExtractTextPlugin will attempt to load through.",
+      "description":
+        "The loader that ExtractTextPlugin will attempt to load through.",
       "modes": {
         "type": ["string", "object", "array"]
       }

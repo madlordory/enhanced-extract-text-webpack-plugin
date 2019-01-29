@@ -75,6 +75,10 @@ export function getOrder(a, b) {
   return 0;
 }
 
+export function isString(a) {
+  return typeof a === "string";
+}
+
 export function getLoaderObject(loader) {
   if (isString(loader)) {
     return { loader };
@@ -84,18 +88,14 @@ export function getLoaderObject(loader) {
 
 export function mergeOptions(a, b) {
   if (!b) return a;
-  Object.keys(b).forEach((key) => {
+  Object.keys(b).forEach(key => {
     a[key] = b[key];
   });
   return a;
 }
 
-export function isString(a) {
-  return typeof a === 'string';
-}
-
 export function isFunction(a) {
-  return typeof a === 'function';
+  return typeof a === "function";
 }
 
 export function isType(type, obj) {

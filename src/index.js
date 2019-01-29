@@ -3,15 +3,16 @@
   no-param-reassign,
   prefer-rest-params
 */
-import fs from 'fs';
-import path from 'path';
-import Chunk from 'webpack/lib/Chunk';
-import { ConcatSource, RawSource, CachedSource } from 'webpack-sources';
-import async from 'async';
-import loaderUtils from 'loader-utils';
-import validateOptions from 'schema-utils';
-import ExtractTextPluginCompilation from './lib/ExtractTextPluginCompilation';
-import OrderUndefinedError from './lib/OrderUndefinedError';
+import fs from "fs";
+import path from "path";
+import Chunk from "webpack/lib/Chunk";
+import Entrypoint from "webpack/lib/Entrypoint";
+import { ConcatSource, RawSource, CachedSource } from "webpack-sources";
+import async from "async";
+import loaderUtils from "loader-utils";
+import validateOptions from "schema-utils";
+import ExtractTextPluginCompilation from "./lib/ExtractTextPluginCompilation";
+import OrderUndefinedError from "./lib/OrderUndefinedError";
 import {
   isInvalidOrder,
   getOrder,
@@ -19,11 +20,11 @@ import {
   getLoaderObject,
   mergeOptions,
   isString,
-  isFunction,
-} from './lib/helpers';
+  isFunction
+} from "./lib/helpers";
 
 const NS = path.dirname(fs.realpathSync(__filename));
-const plugin = { name: 'ExtractTextPlugin' };
+const plugin = { name: "ExtractTextPlugin" };
 
 let nextId = 0;
 
@@ -33,9 +34,9 @@ class ExtractTextPlugin {
       options = { filename: options };
     } else {
       validateOptions(
-        path.resolve(__dirname, './plugin.json'),
+        path.resolve(__dirname, "./plugin.json"),
         options,
-        'Extract Text Plugin',
+        "Extract Text Plugin"
       );
     }
     this.filename = options.filename;
@@ -47,12 +48,12 @@ class ExtractTextPlugin {
   }
 
   static loader(options) {
-    return { loader: require.resolve('./loader'), options };
+    return { loader: require.resolve("./loader"), options };
   }
 
   static applyAdditionalInformation(source, info) {
     if (info) {
-      return new ConcatSource(`@media ${info[0]} {`, source, '}');
+      return new ConcatSource(`@media ${info[0]} {`, source, "}");
     }
 
     return source;
@@ -87,13 +88,23 @@ class ExtractTextPlugin {
     }
   }
 
+  findEntryPoints(chunkGroup, entrypoints) {
+    if (chunkGroup instanceof Entrypoint) {
+      entrypoints.add(chunkGroup);
+    } else {
+      chunkGroup.getParents().forEach(subChunkGroup => {
+        this.findEntryPoints(subChunkGroup, entrypoints);
+      });
+    }
+  }
+
   static renderExtractedChunk(compilation, chunk) {
     const source = new ConcatSource();
 
     for (const chunkModule of chunk.modulesIterable) {
       let moduleSource = chunkModule.source(
         compilation.dependencyTemplates,
-        compilation.runtimeTemplate,
+        compilation.runtimeTemplate
       );
 
       // This module was concatenated by the ModuleConcatenationPlugin; because the pitching loader
@@ -128,8 +139,8 @@ class ExtractTextPlugin {
         source.add(
           ExtractTextPlugin.applyAdditionalInformation(
             moduleSource,
-            chunkModule.additionalInformation,
-          ),
+            chunkModule.additionalInformation
+          )
         );
       }
     }
@@ -141,15 +152,15 @@ class ExtractTextPlugin {
     if (
       Array.isArray(options) ||
       isString(options) ||
-      typeof options.options === 'object' ||
-      typeof options.query === 'object'
+      typeof options.options === "object" ||
+      typeof options.query === "object"
     ) {
       options = { use: options };
     } else {
       validateOptions(
-        path.resolve(__dirname, './loader.json'),
+        path.resolve(__dirname, "./loader.json"),
         options,
-        'Extract Text Plugin (Loader)',
+        "Extract Text Plugin (Loader)"
       );
     }
 
@@ -157,11 +168,11 @@ class ExtractTextPlugin {
     let before = options.fallback || [];
 
     if (isString(loader)) {
-      loader = loader.split('!');
+      loader = loader.split("!");
     }
 
     if (isString(before)) {
-      before = before.split('!');
+      before = before.split("!");
     } else if (!Array.isArray(before)) {
       before = [before];
     }
@@ -176,7 +187,7 @@ class ExtractTextPlugin {
   apply(compiler) {
     const { options, filename, id } = this;
 
-    compiler.hooks.thisCompilation.tap(plugin, (compilation) => {
+    compiler.hooks.thisCompilation.tap(plugin, compilation => {
       const extractCompilation = new ExtractTextPluginCompilation();
 
       compilation.hooks.normalModuleLoader.tap(
@@ -190,38 +201,50 @@ class ExtractTextPlugin {
             if (!Array.isArray(content) && content != null) {
               throw new Error(
                 `Exported value was not extracted as an array: ${JSON.stringify(
-                  content,
-                )}`,
+                  content
+                )}`
               );
             }
 
             module[NS] = {
               content,
-              options: opt || {},
+              options: opt || {}
             };
 
             return options.allChunks || module[`${NS}/extract`]; // eslint-disable-line no-path-concat
           };
-        },
+        }
       );
 
       // 创建 extractedChunks ：css chunk
-      let extractedChunks;
+      // 标记所有 css module
+      // 重新编译 css module 并根据标记选择是否提取样式到新创建的 extracted css module 中，并将 extracted css module 与 extractedChunks 绑定
+      const extractedChunks = [];
       compilation.hooks.optimizeTree.tapAsync(
         plugin,
         (chunks, modules, callback) => {
           // 根据 chunk 复制 新 CSS chunk
-          extractedChunks = chunks.map(() => new Chunk());
-
-          chunks.forEach((chunk, i) => {
-            const extractedChunk = extractedChunks[i];
-            extractedChunk.index = i;
-            extractedChunk.originalChunk = chunk;
-            extractedChunk.name = chunk.name;
-            // extractedChunk.entryModule = chunk.entryModule;
-
+          // extractedChunks = chunks.map(() => new Chunk());
+          chunks.forEach(chunk => {
             for (const chunkGroup of chunk.groupsIterable) {
-              extractedChunk.addGroup(chunkGroup);
+              chunk.$entrypoints = chunk.$entrypoints || new Set();
+              this.findEntryPoints(chunkGroup, chunk.$entrypoints);
+            }
+          });
+
+          compilation.entrypoints.forEach((entrypoint, key) => {
+            const entryChunks = entrypoint.chunks.filter(
+              chunk => chunk.name === key
+            );
+            if (entryChunks.length === 1) {
+              const [entryChunk] = entryChunks;
+              const extractedChunk = new Chunk();
+              // extractedChunk.index = i;
+              extractedChunk.originalChunk = entryChunk;
+              extractedChunk.name = entryChunk.name;
+              extractedChunk.addGroup(entrypoint);
+              entrypoint.$extractedChunk = extractedChunk;
+              extractedChunks.push(extractedChunk);
             }
           });
 
@@ -229,17 +252,16 @@ class ExtractTextPlugin {
           async.forEach(
             chunks,
             (chunk, chunkCallback) => {
-              // eslint-disable-line no-shadow
-              const extractedChunk = extractedChunks[chunks.indexOf(chunk)];
+              const { $entrypoints } = chunk;
               const shouldExtract = !!(
                 options.allChunks || isInitialOrHasNoParents(chunk)
               );
 
-              // 轮询该 chunk 的所有 module
+              // 遍历所有 css module , 提取 css 到对应模块，并将 css module 复制到 对应的 extractedChunk 中
               async.forEach(
                 Array.from(chunk.modulesIterable).sort(
                   // NOTE: .index should be .index2 once ESM support is added
-                  (a, b) => a.index - b.index,
+                  (a, b) => a.index - b.index
                 ),
                 (module, moduleCallback) => {
                   // eslint-disable-line no-shadow
@@ -255,7 +277,7 @@ class ExtractTextPlugin {
                     if (shouldExtract && !wasExtracted) {
                       module[`${NS}/extract`] = shouldExtract; // eslint-disable-line no-path-concat
 
-                      return compilation.rebuildModule(module, (err) => {
+                      return compilation.rebuildModule(module, err => {
                         if (err) {
                           compilation.errors.push(err);
 
@@ -269,7 +291,7 @@ class ExtractTextPlugin {
                           meta.content != null
                         ) {
                           err = new Error(
-                            `${module.identifier()} doesn't export content`,
+                            `${module.identifier()} doesn't export content`
                           );
                           compilation.errors.push(err);
 
@@ -277,78 +299,87 @@ class ExtractTextPlugin {
                         }
 
                         if (meta.content) {
-                          extractCompilation.addResultToChunk(
-                            module.identifier(),
-                            meta.content,
-                            module,
-                            extractedChunk,
-                          );
+                          $entrypoints.forEach(entrypoint => {
+                            const { $extractedChunk } = entrypoint;
+                            $extractedChunk &&
+                              extractCompilation.addResultToChunk(
+                                module.identifier(),
+                                meta.content,
+                                module,
+                                $extractedChunk
+                              );
+                          });
                         }
 
                         return moduleCallback();
                       });
-                    } else if (meta.content) {
-                      extractCompilation.addResultToChunk(
-                        module.identifier(),
-                        meta.content,
-                        module,
-                        extractedChunk,
-                      );
+                    }
+                    if (meta.content) {
+                      $entrypoints.forEach(entrypoint => {
+                        const { $extractedChunk } = entrypoint;
+                        $extractedChunk &&
+                          extractCompilation.addResultToChunk(
+                            module.identifier(),
+                            meta.content,
+                            module,
+                            $extractedChunk
+                          );
+                      });
                     }
                   }
 
                   return moduleCallback();
                 },
-                (err) => {
+                err => {
                   if (err) {
                     return chunkCallback(err);
                   }
 
                   chunkCallback();
-                },
+                }
               );
             },
-            (err) => {
+            err => {
               if (err) {
                 return callback(err);
               }
 
-              // 所有模块轮询完毕后遍历 extractedChunks，将 extractedChunk 中的异步 chunk 的所有 module 归并到 extractedChunk 中
-              extractedChunks.forEach((extractedChunk) => {
-                if (isInitialOrHasNoParents(extractedChunk)) {
-                  this.mergeNonInitialChunks(extractedChunk);
-                }
-              });
-
-              // 刨除异步 extractedChunk 中的所有 CSS module，感觉这步走不到
-              extractedChunks.forEach((extractedChunk) => {
-                if (!isInitialOrHasNoParents(extractedChunk)) {
-                  for (const chunkModule of extractedChunk.modulesIterable) {
-                    extractedChunk.removeModule(chunkModule);
-                  }
-                }
-              });
+              // // 所有模块轮询完毕后遍历 extractedChunks，将 extractedChunk 中的 async chunk 的所有 css module 复制到 extractedChunk 中
+              // extractedChunks.forEach(extractedChunk => {
+              //   if (isInitialOrHasNoParents(extractedChunk)) {
+              //     this.mergeNonInitialChunks(extractedChunk);
+              //   }
+              // });
+              //
+              // // 刨除 async extractedChunk 中的所有 CSS module，这样就不用额外生成单独的异步 css 文件了，比如 0.chunk.js ，同时也会生成 0.css, 此处逻辑就是删除掉 0.css
+              // extractedChunks.forEach(extractedChunk => {
+              //   if (!isInitialOrHasNoParents(extractedChunk)) {
+              //     for (const chunkModule of extractedChunk.modulesIterable) {
+              //       extractedChunk.removeModule(chunkModule);
+              //     }
+              //   }
+              // });
 
               compilation.hooks.optimizeExtractedChunks.call(extractedChunks);
               callback();
-            },
+            }
           );
-        },
+        }
       );
 
       // 生成文件
-      compilation.hooks.additionalAssets.tapAsync(plugin, (assetCb) => {
+      compilation.hooks.additionalAssets.tapAsync(plugin, assetCb => {
         // 遍历所有 css chunk
-        extractedChunks.forEach((extractedChunk) => {
+        extractedChunks.forEach(extractedChunk => {
           if (extractedChunk.getNumberOfModules()) {
             // css 模块排序
             extractedChunk.sortModules((a, b) => {
               if (!options.ignoreOrder && isInvalidOrder(a, b)) {
                 compilation.errors.push(
-                  new OrderUndefinedError(a.getOriginalModule()),
+                  new OrderUndefinedError(a.getOriginalModule())
                 );
                 compilation.errors.push(
-                  new OrderUndefinedError(b.getOriginalModule()),
+                  new OrderUndefinedError(b.getOriginalModule())
                 );
               }
 
@@ -359,7 +390,7 @@ class ExtractTextPlugin {
             // 根据 css chunk 生成 css 文本
             const source = ExtractTextPlugin.renderExtractedChunk(
               compilation,
-              extractedChunk,
+              extractedChunk
             );
 
             if (!source.size()) {
@@ -369,23 +400,25 @@ class ExtractTextPlugin {
             const getPath = format =>
               compilation
                 .getPath(format, {
-                  chunk,
+                  chunk
                 })
                 .replace(
                   /\[(?:(\w+):)?contenthash(?::([a-z]+\d*))?(?::(\d+))?\]/gi,
                   // eslint-disable-next-line func-names
-                  function () {
+                  function() {
                     return loaderUtils.getHashDigest(
                       source.source(),
                       arguments[1],
                       arguments[2],
-                      parseInt(arguments[3], 10),
+                      parseInt(arguments[3], 10)
                     );
-                  },
+                  }
                 );
 
             // 生成 css 文件路径名
-            const file = isFunction(filename) ? filename(getPath) : getPath(filename);
+            const file = isFunction(filename)
+              ? filename(getPath)
+              : getPath(filename);
 
             // 注册资源文件
             compilation.assets[file] = source;
@@ -401,7 +434,7 @@ class ExtractTextPlugin {
 }
 
 ExtractTextPlugin.extract = ExtractTextPlugin.prototype.extract.bind(
-  ExtractTextPlugin,
+  ExtractTextPlugin
 );
 
 export default ExtractTextPlugin;

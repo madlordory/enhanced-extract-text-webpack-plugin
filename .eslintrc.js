@@ -1,0 +1,42 @@
+module.exports = {
+  extends: ["airbnb", "webpack", "prettier", "prettier/react"],
+  parser: "babel-eslint",
+  rules: {
+    "global-require": 0,
+    "import/prefer-default-export": 0,
+    "import/no-extraneous-dependencies": [2, { devDependencies: true }],
+    "import/no-unresolved": 0,
+    "jsx-a11y/anchor-is-valid": 0,
+    "jsx-a11y/click-events-have-key-events": 0,
+    "jsx-a11y/no-static-element-interactions": 0,
+    "jsx-a11y/no-noninteractive-element-interactions": 0,
+    "max-len": 0,
+    "no-debugger": process.env.NODE_ENV === "production" ? 2 : 0,
+    "no-nested-ternary": 0,
+    // "no-param-reassign": [2, { props: false }],
+    "react/jsx-filename-extension": [1, { extensions: [".js", ".jsx"] }],
+    "react/jsx-indent-props": [2, 4],
+    "react/jsx-indent": [2, 4],
+    "react/prop-types": 0,
+    "jsx-a11y/label-has-for": 0,
+    "array-callback-return": 0,
+    "import/extensions": ["error", "ignorePackages"],
+    "no-unused-expressions": 0,
+    "no-param-reassign": 0,
+    "react/prefer-stateless-function": 0,
+    "no-restricted-syntax": 0,
+    "no-underscore-dangle": 0,
+    "prefer-destructuring": 1,
+    "prefer-rest-params": 0,
+    "class-methods-use-this": 1,
+    "no-plusplus": 1,
+    "consistent-return": 0
+  },
+  globals: {
+    window: true,
+    document: false,
+    wx: false,
+    LXAnalytics: false,
+    Owl: false
+  }
+};
